@@ -30,3 +30,13 @@ export interface User {
   password?: string;
   role: 'user' | 'admin';
 }
+
+export interface Review {
+  id: string;
+  productId: string;
+  userEmail: string;
+  userName: string;
+  rating: number;
+  comment: string;
+  date: string;
+}

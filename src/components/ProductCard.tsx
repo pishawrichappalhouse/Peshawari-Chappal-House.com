@@ -75,7 +75,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
       whileHover={{ y: -8 }}
       className="group bg-white rounded-2xl overflow-hidden border border-stone-200 shadow-sm hover:shadow-xl transition-all duration-300"
     >
-      <div className="relative h-72 overflow-hidden bg-stone-100">
+      <div className="relative h-72 overflow-hidden bg-stone-100 cursor-pointer" onClick={() => navigate(`/product/${product.id}`)}>
         <img 
           src={product.image} 
           alt={product.name} 
@@ -84,10 +84,16 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         />
         <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-4">
           <button 
-            onClick={() => addToCart(product)}
+            onClick={(e) => { e.stopPropagation(); addToCart(product); }}
             className="p-3 bg-white text-stone-900 rounded-full hover:bg-amber-700 hover:text-white transition-colors shadow-lg"
           >
             <ShoppingCart size={20} />
+          </button>
+          <button 
+            onClick={(e) => { e.stopPropagation(); navigate(`/product/${product.id}`); }}
+            className="p-3 bg-white text-stone-900 rounded-full hover:bg-amber-700 hover:text-white transition-colors shadow-lg"
+          >
+            <Info size={20} />
           </button>
         </div>
         <div className="absolute top-4 left-4">
@@ -98,20 +104,28 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
       </div>
       
       <div className="p-6">
-        <h3 className="text-lg font-serif font-bold text-stone-900 mb-1">{product.name}</h3>
+        <h3 className="text-lg font-serif font-bold text-stone-900 mb-1 cursor-pointer hover:text-amber-700 transition-colors" onClick={() => navigate(`/product/${product.id}`)}>{product.name}</h3>
         <p className="text-sm text-stone-700 line-clamp-2 mb-4 h-10 leading-relaxed">
           {product.description}
         </p>
         
         <div className="flex items-center justify-between pt-4 border-t border-stone-100">
           <span className="text-xl font-bold text-amber-800">Rs. {product.price.toLocaleString()}</span>
-          <button 
-            onClick={handleAddToCartAndRedirect}
-            className="flex items-center gap-2 text-sm font-bold text-stone-900 hover:text-amber-700 transition-colors group/btn"
-          >
-            ADD TO CART
-            <ArrowRight size={16} className="group-hover/btn:translate-x-1 transition-transform" />
-          </button>
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={() => navigate(`/product/${product.id}`)}
+              className="text-[10px] font-bold text-stone-400 hover:text-stone-900 uppercase tracking-widest transition-colors"
+            >
+              DETAILS
+            </button>
+            <button 
+              onClick={handleAddToCartAndRedirect}
+              className="flex items-center gap-2 text-sm font-bold text-stone-900 hover:text-amber-700 transition-colors group/btn"
+            >
+              ADD TO CART
+              <ArrowRight size={16} className="group-hover/btn:translate-x-1 transition-transform" />
+            </button>
+          </div>
         </div>
       </div>
       
