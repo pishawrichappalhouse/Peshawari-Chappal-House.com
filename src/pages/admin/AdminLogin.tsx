@@ -8,21 +8,49 @@ const AdminLogin = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const { login } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const { login, isAdmin } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setLoading(true);
 
     try {
       await login(email, password);
-      // The AuthProvider will update the user state, and App.tsx will handle redirection if needed.
-      // But we can also check here if the user is admin.
+      // Wait for AuthContext to update and check isAdmin
+      // If the login is successful, the AuthContext will update the user state.
+      // We can check if the user is admin after a short delay or by using a useEffect.
+      // For now, we'll navigate and the AdminRoute will handle the protection.
       navigate('/admin/dashboard');
     } catch (err: any) {
       console.error(err);
-      setError(err.message || 'Invalid email or password');
+      if (err.code === 'auth/user-not-found') {
+        setError('Admin account not found. Please sign up first.');
+      } else if (err.code === 'auth/wrong-password') {
+        setError('Incorrect password.');
+      } else if (err.code === 'auth/operation-not-allowed') {
+        setError('Email/Password login is not enabled in Firebase Console.');
+      } else {
+        setError(err.message || 'Invalid email or password');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    setError('');
+    setLoading(true);
+    try {
+      await login();
+      navigate('/admin/dashboard');
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || 'Google Login failed');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -38,7 +66,7 @@ const AdminLogin = () => {
         animate={{ opacity: 1, scale: 1 }}
         className="max-w-md w-full bg-stone-800 rounded-[2.5rem] shadow-2xl overflow-hidden border border-stone-700 relative z-10"
       >
-        <div className="p-10 space-y-10">
+        <div className="p-10 space-y-8">
           <div className="text-center space-y-4">
             <div className="w-16 h-16 bg-amber-700/20 rounded-2xl flex items-center justify-center text-amber-500 mx-auto border border-amber-700/30">
               <ShieldCheck size={32} />
@@ -84,12 +112,31 @@ const AdminLogin = () => {
 
             <button 
               type="submit" 
-              className="w-full py-4 bg-amber-700 hover:bg-amber-600 text-white font-bold rounded-2xl transition-all duration-300 flex items-center justify-center gap-2 group shadow-xl shadow-amber-700/20"
+              disabled={loading}
+              className="w-full py-4 bg-amber-700 hover:bg-amber-600 disabled:opacity-50 text-white font-bold rounded-2xl transition-all duration-300 flex items-center justify-center gap-2 group shadow-xl shadow-amber-700/20"
             >
-              ACCESS PORTAL
-              <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
+              {loading ? 'AUTHENTICATING...' : 'ACCESS PORTAL'}
+              {!loading && <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />}
             </button>
           </form>
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-stone-700"></div>
+            </div>
+            <div className="relative flex justify-center text-xs uppercase tracking-widest font-bold">
+              <span className="bg-stone-800 px-4 text-stone-500">OR</span>
+            </div>
+          </div>
+
+          <button 
+            onClick={handleGoogleLogin}
+            disabled={loading}
+            className="w-full py-4 bg-white hover:bg-stone-100 disabled:opacity-50 text-stone-900 font-bold rounded-2xl transition-all duration-300 flex items-center justify-center gap-3 shadow-xl shadow-white/5"
+          >
+            <img src="https://www.google.com/favicon.ico" alt="Google" className="w-5 h-5" />
+            SIGN IN WITH GOOGLE
+          </button>
 
           <div className="pt-6 border-t border-stone-700 flex justify-center">
             <Link 

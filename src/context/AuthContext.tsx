@@ -34,9 +34,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         // Check if user exists in Firestore
-        const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+        const userDocRef = doc(db, 'users', firebaseUser.uid);
+        const userDoc = await getDoc(userDocRef);
+        
         if (userDoc.exists()) {
-          setUser(userDoc.data() as User);
+          const userData = userDoc.data() as User;
+          // Force admin role if email matches ADMIN_EMAIL but role is not admin
+          if (firebaseUser.email === ADMIN_EMAIL && userData.role !== 'admin') {
+            const updatedUser = { ...userData, role: 'admin' as const };
+            await setDoc(userDocRef, updatedUser, { merge: true });
+            setUser(updatedUser);
+          } else {
+            setUser(userData);
+          }
         } else {
           // Create new user profile
           const newUser: User = {
@@ -44,7 +54,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             username: firebaseUser.displayName || firebaseUser.email!.split('@')[0],
             role: firebaseUser.email === ADMIN_EMAIL ? 'admin' : 'user'
           };
-          await setDoc(doc(db, 'users', firebaseUser.uid), newUser);
+          await setDoc(userDocRef, newUser);
           setUser(newUser);
         }
       } else {
