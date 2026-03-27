@@ -11,31 +11,16 @@ const Login = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
-    // Check for admin credentials
-    if (email === 'admin' && password === 'admin123') {
-      const adminEmail = 'admin@peshawarichappal.com';
-      const users = JSON.parse(localStorage.getItem('users') || '[]');
-      if (!users.find((u: any) => u.email === adminEmail)) {
-        users.push({ email: adminEmail, role: 'admin' });
-        localStorage.setItem('users', JSON.stringify(users));
-      }
-      login(adminEmail, 'admin');
-      navigate('/admin-dashboard');
-      return;
-    }
-
-    const users = JSON.parse(localStorage.getItem('users') || '[]');
-    const user = users.find((u: any) => u.email === email && u.password === password);
-
-    if (user) {
-      login(email, user.role || 'user', user.username);
+    try {
+      await login(email, password);
       navigate('/');
-    } else {
-      setError('Invalid email or password');
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || 'Invalid email or password');
     }
   };
 

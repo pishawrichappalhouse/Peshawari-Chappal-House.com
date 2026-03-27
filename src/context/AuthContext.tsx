@@ -1,12 +1,21 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from '../types';
 import { auth, db } from '../firebase';
-import { onAuthStateChanged, signOut, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { 
+  onAuthStateChanged, 
+  signOut, 
+  GoogleAuthProvider, 
+  signInWithPopup,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  updateProfile
+} from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 interface AuthContextType {
   user: User | null;
-  login: () => Promise<void>;
+  login: (email?: string, password?: string) => Promise<void>;
+  signup: (email: string, password: string, username: string) => Promise<void>;
   logout: () => Promise<void>;
   isAuthenticated: boolean;
   isAdmin: boolean;
@@ -14,6 +23,8 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+const ADMIN_EMAIL = 'admin@gmail.com';
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -31,7 +42,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const newUser: User = {
             email: firebaseUser.email!,
             username: firebaseUser.displayName || firebaseUser.email!.split('@')[0],
-            role: firebaseUser.email === 'pishawrichappalhouse@gmail.com' ? 'admin' : 'user'
+            role: firebaseUser.email === ADMIN_EMAIL ? 'admin' : 'user'
           };
           await setDoc(doc(db, 'users', firebaseUser.uid), newUser);
           setUser(newUser);
@@ -45,9 +56,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => unsubscribe();
   }, []);
 
-  const login = async () => {
-    const provider = new GoogleAuthProvider();
-    await signInWithPopup(auth, provider);
+  const login = async (email?: string, password?: string) => {
+    if (email && password) {
+      await signInWithEmailAndPassword(auth, email, password);
+    } else {
+      const provider = new GoogleAuthProvider();
+      await signInWithPopup(auth, provider);
+    }
+  };
+
+  const signup = async (email: string, password: string, username: string) => {
+    const { user: firebaseUser } = await createUserWithEmailAndPassword(auth, email, password);
+    await updateProfile(firebaseUser, { displayName: username });
+    
+    const newUser: User = {
+      email,
+      username,
+      role: email === ADMIN_EMAIL ? 'admin' : 'user'
+    };
+    await setDoc(doc(db, 'users', firebaseUser.uid), newUser);
+    setUser(newUser);
   };
 
   const logout = async () => {
@@ -58,6 +86,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     <AuthContext.Provider value={{ 
       user, 
       login, 
+      signup,
       logout, 
       isAuthenticated: !!user,
       isAdmin: user?.role === 'admin',

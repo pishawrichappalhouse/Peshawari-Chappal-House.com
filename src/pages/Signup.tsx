@@ -10,10 +10,10 @@ const Signup = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
-  const { login } = useAuth();
+  const { signup } = useAuth();
   const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -22,18 +22,13 @@ const Signup = () => {
       return;
     }
 
-    const users = JSON.parse(localStorage.getItem('users') || '[]');
-    if (users.find((u: any) => u.email === email)) {
-      setError('User already exists');
-      return;
+    try {
+      await signup(email, password, username);
+      navigate('/');
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || 'Failed to create account');
     }
-
-    const newUser = { email, username, password, role: 'user' };
-    users.push(newUser);
-    localStorage.setItem('users', JSON.stringify(users));
-
-    login(email, 'user', username);
-    navigate('/');
   };
 
   return (
