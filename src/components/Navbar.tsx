@@ -11,6 +11,7 @@ const Navbar = () => {
   const { cart } = useCart();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [latestOrder, setLatestOrder] = useState<Order | null>(null);
+  const [showConfirmPopup, setShowConfirmPopup] = useState(false);
   const navigate = useNavigate();
 
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
@@ -36,10 +37,40 @@ const Navbar = () => {
 
     fetchLatestOrder();
     
+    // Check for status changes to show notification
+    const checkStatusChange = () => {
+      if (user) {
+        const savedOrders = localStorage.getItem('orders');
+        if (savedOrders) {
+          const allOrders: Order[] = JSON.parse(savedOrders);
+          const userOrders = allOrders.filter(o => o.userEmail === user.email);
+          if (userOrders.length > 0) {
+            const sorted = userOrders.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            const currentLatest = sorted[0];
+            
+            // If the latest order is confirmed and we haven't notified the user yet
+            const notifiedOrders = JSON.parse(localStorage.getItem(`notified_orders_${user.email}`) || '[]');
+            if (currentLatest.status === 'Confirmed' && !notifiedOrders.includes(currentLatest.id)) {
+              setShowConfirmPopup(true);
+              localStorage.setItem(`notified_orders_${user.email}`, JSON.stringify([...notifiedOrders, currentLatest.id]));
+            }
+          }
+        }
+      }
+    };
+
+    checkStatusChange();
+    
     // Listen for storage changes (for cross-tab or manual updates)
-    window.addEventListener('storage', fetchLatestOrder);
-    // Also check periodically or on a custom event if we want it more reactive
-    const interval = setInterval(fetchLatestOrder, 5000);
+    window.addEventListener('storage', () => {
+      fetchLatestOrder();
+      checkStatusChange();
+    });
+    // Also check periodically
+    const interval = setInterval(() => {
+      fetchLatestOrder();
+      checkStatusChange();
+    }, 5000);
 
     return () => {
       window.removeEventListener('storage', fetchLatestOrder);
@@ -211,6 +242,43 @@ const Navbar = () => {
               </div>
             </div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Order Confirmation Popup */}
+      <AnimatePresence>
+        {showConfirmPopup && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-stone-900/60 backdrop-blur-sm"
+              onClick={() => setShowConfirmPopup(false)}
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-sm bg-white rounded-[2.5rem] shadow-2xl overflow-hidden p-8 text-center space-y-6"
+            >
+              <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto">
+                <ShieldCheck size={32} />
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-2xl font-serif font-bold text-stone-900">Order Confirm</h3>
+                <p className="text-stone-500 text-sm">
+                  Your order has been confirmed by the admin! Thank you for your patience.
+                </p>
+              </div>
+              <button 
+                onClick={() => setShowConfirmPopup(false)}
+                className="w-full py-3 bg-stone-900 text-white font-bold rounded-xl hover:bg-stone-800 transition-all shadow-lg shadow-stone-900/20"
+              >
+                GOT IT
+              </button>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </nav>

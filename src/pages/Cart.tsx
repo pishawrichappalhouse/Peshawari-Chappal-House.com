@@ -300,10 +300,11 @@ const Cart = () => {
                 <CheckCircle2 size={40} />
               </div>
               <div className="space-y-2">
-                <h3 className="text-3xl font-serif font-bold text-stone-900">Thank You!</h3>
+                <h3 className="text-3xl font-serif font-bold text-stone-900">Order Processing</h3>
                 <p className="text-stone-500">
+                  Thank You For Your Order! 
                   Your order for <strong>{orderedItems.join(', ')}</strong> has been successfully placed. 
-                  Thank you for shopping with us! Our admin team will process it shortly and contact you if needed.
+                  Our admin team will process it shortly and contact you if needed.
                 </p>
               </div>
               <button 

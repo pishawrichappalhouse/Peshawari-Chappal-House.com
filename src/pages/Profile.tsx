@@ -10,13 +10,57 @@ const Profile = () => {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 
   useEffect(() => {
+    const fetchOrders = () => {
+      const savedOrders = localStorage.getItem('orders');
+      if (savedOrders && user) {
+        const allOrders: Order[] = JSON.parse(savedOrders);
+        const userOrders = allOrders.filter(order => order.userEmail === user.email);
+        const sortedOrders = userOrders.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        setOrders(sortedOrders);
+        
+        // Update selected order if it exists to show real-time status in modal
+        if (selectedOrder) {
+          const updatedSelected = sortedOrders.find(o => o.id === selectedOrder.id);
+          if (updatedSelected && updatedSelected.status !== selectedOrder.status) {
+            setSelectedOrder(updatedSelected);
+          }
+        }
+      }
+    };
+
+    fetchOrders();
+
+    // Listen for storage changes (for cross-tab updates)
+    window.addEventListener('storage', fetchOrders);
+    
+    // Periodic polling for real-time updates in the same tab
+    const interval = setInterval(fetchOrders, 3000);
+
+    return () => {
+      window.removeEventListener('storage', fetchOrders);
+      clearInterval(interval);
+    };
+  }, [user, selectedOrder]);
+
+  const [orderToCancel, setOrderToCancel] = useState<string | null>(null);
+
+  const handleCancelOrder = (orderId: string) => {
     const savedOrders = localStorage.getItem('orders');
-    if (savedOrders && user) {
+    if (savedOrders) {
       const allOrders: Order[] = JSON.parse(savedOrders);
-      const userOrders = allOrders.filter(order => order.userEmail === user.email);
-      setOrders(userOrders.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+      const updatedOrders = allOrders.map(order => 
+        order.id === orderId ? { ...order, status: 'Cancelled' as const } : order
+      );
+      localStorage.setItem('orders', JSON.stringify(updatedOrders));
+      
+      // Update local state
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'Cancelled' } : o));
+      if (selectedOrder?.id === orderId) {
+        setSelectedOrder({ ...selectedOrder, status: 'Cancelled' });
+      }
+      setOrderToCancel(null);
     }
-  }, [user]);
+  };
 
   if (!user) return null;
 
@@ -190,11 +234,64 @@ const Profile = () => {
                   </div>
                 </div>
 
-                <button 
-                  onClick={() => setSelectedOrder(null)}
-                  className="w-full py-4 bg-stone-900 text-white font-bold rounded-2xl hover:bg-stone-800 transition-all"
+                <div className="flex flex-col sm:flex-row gap-4">
+                  {selectedOrder.status === 'Processing' && (
+                    <button 
+                      onClick={() => setOrderToCancel(selectedOrder.id)}
+                      className="flex-grow py-4 bg-red-50 text-red-600 font-bold rounded-2xl hover:bg-red-100 transition-all"
+                    >
+                      CANCEL ORDER
+                    </button>
+                  )}
+                  <button 
+                    onClick={() => setSelectedOrder(null)}
+                    className="flex-grow py-4 bg-stone-900 text-white font-bold rounded-2xl hover:bg-stone-800 transition-all"
+                  >
+                    CLOSE
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Cancellation Confirmation Modal */}
+      <AnimatePresence>
+        {orderToCancel && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setOrderToCancel(null)}
+              className="absolute inset-0 bg-stone-900/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-md bg-white rounded-[2.5rem] shadow-2xl overflow-hidden p-8 text-center space-y-6"
+            >
+              <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto text-red-600">
+                <XCircle size={40} />
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-2xl font-serif font-bold text-stone-900">Cancel Order?</h3>
+                <p className="text-stone-500">Are you sure you want to cancel this order? This action cannot be undone.</p>
+              </div>
+              <div className="flex gap-4">
+                <button
+                  onClick={() => setOrderToCancel(null)}
+                  className="flex-1 py-4 bg-stone-100 text-stone-600 font-bold rounded-2xl hover:bg-stone-200 transition-all"
                 >
-                  CLOSE
+                  NO, KEEP IT
+                </button>
+                <button
+                  onClick={() => handleCancelOrder(orderToCancel)}
+                  className="flex-1 py-4 bg-red-600 text-white font-bold rounded-2xl hover:bg-red-700 transition-all shadow-lg shadow-red-200"
+                >
+                  YES, CANCEL
                 </button>
               </div>
             </motion.div>
