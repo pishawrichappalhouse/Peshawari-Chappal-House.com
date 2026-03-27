@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { Loader2 } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -18,7 +18,12 @@ import About from './pages/About';
 import Contact from './pages/Contact';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
-import AdminDashboard from './pages/AdminDashboard';
+import AdminDashboard from './pages/admin/AdminDashboard';
+import AdminProducts from './pages/admin/AdminProducts';
+import AdminOrders from './pages/admin/AdminOrders';
+import AdminUsers from './pages/admin/AdminUsers';
+import AdminLogin from './pages/admin/AdminLogin';
+import AdminLayout from './layouts/AdminLayout';
 import Cart from './pages/Cart';
 import Profile from './pages/Profile';
 import ProductDetails from './pages/ProductDetails';
@@ -32,8 +37,30 @@ const ProtectedRoute = ({ children, adminOnly = false }: { children: React.React
   return <>{children}</>;
 };
 
+const AdminRoute = ({ children }: { children: React.ReactNode }) => {
+  const { isAdmin, loading } = useAuth();
+  
+  if (loading) return (
+    <div className="h-screen w-full flex flex-col items-center justify-center bg-stone-50 space-y-4">
+      <motion.div
+        animate={{ rotate: 360 }}
+        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+        className="text-amber-700"
+      >
+        <Loader2 size={48} />
+      </motion.div>
+    </div>
+  );
+  
+  if (!isAdmin) return <Navigate to="/admin/login" />;
+  
+  return <AdminLayout>{children}</AdminLayout>;
+};
+
 function AppContent() {
   const [loading, setLoading] = useState(true);
+  const location = useLocation();
+  const isAdminPath = location.pathname.startsWith('/admin');
 
   useEffect(() => {
     const timer = setTimeout(() => setLoading(false), 1500);
@@ -59,7 +86,7 @@ function AppContent() {
 
   return (
     <div className="min-h-screen flex flex-col bg-[#F9F8F6] text-stone-900 font-sans">
-      <Navbar />
+      {!isAdminPath && <Navbar />}
       <main className="flex-grow">
         <Routes>
           <Route path="/" element={<Home />} />
@@ -78,17 +105,19 @@ function AppContent() {
               </ProtectedRoute>
             } 
           />
-          <Route 
-            path="/admin-dashboard" 
-            element={
-              <ProtectedRoute adminOnly>
-                <AdminDashboard />
-              </ProtectedRoute>
-            } 
-          />
+          
+          {/* Admin Portal Routes */}
+          <Route path="/admin/login" element={<AdminLogin />} />
+          <Route path="/admin/dashboard" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+          <Route path="/admin/products" element={<AdminRoute><AdminProducts /></AdminRoute>} />
+          <Route path="/admin/orders" element={<AdminRoute><AdminOrders /></AdminRoute>} />
+          <Route path="/admin/users" element={<AdminRoute><AdminUsers /></AdminRoute>} />
+          
+          {/* Redirect old admin dashboard to new portal */}
+          <Route path="/admin-dashboard" element={<Navigate to="/admin/dashboard" replace />} />
         </Routes>
       </main>
-      <Footer />
+      {!isAdminPath && <Footer />}
     </div>
   );
 }

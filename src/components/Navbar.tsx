@@ -63,8 +63,8 @@ const Navbar = () => {
             <Link to="/about" className="text-sm font-medium hover:text-amber-700 transition-colors">About</Link>
             <Link to="/contact" className="text-sm font-medium hover:text-amber-700 transition-colors">Contact</Link>
             {isAdmin && (
-              <Link to="/admin-dashboard" className="text-sm font-medium text-amber-700 flex items-center gap-1">
-                <ShieldCheck size={16} /> Admin
+              <Link to="/admin/dashboard" className="text-sm font-medium text-amber-700 flex items-center gap-1">
+                <ShieldCheck size={16} /> Admin Portal
               </Link>
             )}
           </div>
@@ -156,7 +156,7 @@ const Navbar = () => {
               <Link to="/about" className="block text-lg font-medium" onClick={() => setIsMenuOpen(false)}>About</Link>
               <Link to="/contact" className="block text-lg font-medium" onClick={() => setIsMenuOpen(false)}>Contact</Link>
               {isAdmin && (
-                <Link to="/admin-dashboard" className="block text-lg font-medium text-amber-700" onClick={() => setIsMenuOpen(false)}>Admin Panel</Link>
+                <Link to="/admin/dashboard" className="block text-lg font-medium text-amber-700" onClick={() => setIsMenuOpen(false)}>Admin Portal</Link>
               )}
               <div className="pt-4 border-t border-stone-100">
                 {user ? (
