@@ -5,6 +5,8 @@ import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { Order } from '../types';
+import { db } from '../firebase';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
 
 const Navbar = () => {
   const { user, logout, isAdmin } = useAuth();
@@ -17,65 +19,31 @@ const Navbar = () => {
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
   useEffect(() => {
-    const fetchLatestOrder = () => {
-      if (user) {
-        const savedOrders = localStorage.getItem('orders');
-        if (savedOrders) {
-          const allOrders: Order[] = JSON.parse(savedOrders);
-          const userOrders = allOrders.filter(o => o.userEmail === user.email);
-          if (userOrders.length > 0) {
-            const sorted = userOrders.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-            setLatestOrder(sorted[0]);
-          } else {
-            setLatestOrder(null);
-          }
+    if (!user) {
+      setLatestOrder(null);
+      return;
+    }
+
+    const q = query(collection(db, 'orders'), where('userEmail', '==', user.email));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const orderList = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Order));
+      if (orderList.length > 0) {
+        const sorted = orderList.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        const currentLatest = sorted[0];
+        setLatestOrder(currentLatest);
+
+        // Check for status changes to show notification
+        const notifiedOrders = JSON.parse(localStorage.getItem(`notified_orders_${user.email}`) || '[]');
+        if (currentLatest.status === 'Confirmed' && !notifiedOrders.includes(currentLatest.id)) {
+          setShowConfirmPopup(true);
+          localStorage.setItem(`notified_orders_${user.email}`, JSON.stringify([...notifiedOrders, currentLatest.id]));
         }
       } else {
         setLatestOrder(null);
       }
-    };
-
-    fetchLatestOrder();
-    
-    // Check for status changes to show notification
-    const checkStatusChange = () => {
-      if (user) {
-        const savedOrders = localStorage.getItem('orders');
-        if (savedOrders) {
-          const allOrders: Order[] = JSON.parse(savedOrders);
-          const userOrders = allOrders.filter(o => o.userEmail === user.email);
-          if (userOrders.length > 0) {
-            const sorted = userOrders.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-            const currentLatest = sorted[0];
-            
-            // If the latest order is confirmed and we haven't notified the user yet
-            const notifiedOrders = JSON.parse(localStorage.getItem(`notified_orders_${user.email}`) || '[]');
-            if (currentLatest.status === 'Confirmed' && !notifiedOrders.includes(currentLatest.id)) {
-              setShowConfirmPopup(true);
-              localStorage.setItem(`notified_orders_${user.email}`, JSON.stringify([...notifiedOrders, currentLatest.id]));
-            }
-          }
-        }
-      }
-    };
-
-    checkStatusChange();
-    
-    // Listen for storage changes (for cross-tab or manual updates)
-    window.addEventListener('storage', () => {
-      fetchLatestOrder();
-      checkStatusChange();
     });
-    // Also check periodically
-    const interval = setInterval(() => {
-      fetchLatestOrder();
-      checkStatusChange();
-    }, 5000);
 
-    return () => {
-      window.removeEventListener('storage', fetchLatestOrder);
-      clearInterval(interval);
-    };
+    return () => unsubscribe();
   }, [user]);
 
   return (

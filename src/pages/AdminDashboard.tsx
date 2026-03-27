@@ -8,6 +8,8 @@ import { useProducts } from '../context/ProductContext';
 import { useAuth } from '../context/AuthContext';
 import { Product, Order } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
+import { db } from '../firebase';
+import { collection, onSnapshot, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 
 const AdminDashboard = () => {
   const { products, addProduct, updateProduct, deleteProduct } = useProducts();
@@ -44,47 +46,63 @@ const AdminDashboard = () => {
   }, [lastUpdatedOrderId]);
 
   useEffect(() => {
-    const savedOrders = localStorage.getItem('orders');
-    if (savedOrders) {
-      setOrders(JSON.parse(savedOrders));
-    }
-    const savedUsers = localStorage.getItem('users');
-    if (savedUsers) {
-      setUsers(JSON.parse(savedUsers));
-    }
-  }, []);
+    if (!currentUser || currentUser.role !== 'admin') return;
 
-  const updateOrderStatus = (orderId: string, newStatus: Order['status']) => {
-    const updatedOrders = orders.map(order => 
-      order.id === orderId ? { ...order, status: newStatus } : order
-    );
-    setOrders(updatedOrders);
-    localStorage.setItem('orders', JSON.stringify(updatedOrders));
-    
-    // Update selectedOrder if it's the one being modified
-    if (selectedOrder?.id === orderId) {
-      setSelectedOrder({ ...selectedOrder, status: newStatus });
+    const unsubscribeOrders = onSnapshot(collection(db, 'orders'), (snapshot) => {
+      const orderList = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Order));
+      setOrders(orderList.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+    }, (error) => {
+      console.error("Orders Subscription Error: ", error);
+    });
+
+    const unsubscribeUsers = onSnapshot(collection(db, 'users'), (snapshot) => {
+      const userList = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+      setUsers(userList);
+    }, (error) => {
+      console.error("Users Subscription Error: ", error);
+    });
+
+    return () => {
+      unsubscribeOrders();
+      unsubscribeUsers();
+    };
+  }, [currentUser]);
+
+  const updateOrderStatus = async (orderId: string, newStatus: Order['status']) => {
+    try {
+      await updateDoc(doc(db, 'orders', orderId), { status: newStatus });
+      
+      // Update selectedOrder if it's the one being modified
+      if (selectedOrder?.id === orderId) {
+        setSelectedOrder({ ...selectedOrder, status: newStatus });
+      }
+      
+      // Trigger highlight
+      setLastUpdatedOrderId(orderId);
+    } catch (error) {
+      console.error("Error updating order status: ", error);
     }
-    
-    // Trigger highlight
-    setLastUpdatedOrderId(orderId);
   };
 
-  const deleteUser = (email: string) => {
-    const updatedUsers = users.filter(user => user.email !== email);
-    setUsers(updatedUsers);
-    localStorage.setItem('users', JSON.stringify(updatedUsers));
-    setUserToDelete(null);
+  const deleteUser = async (userId: string) => {
+    try {
+      await deleteDoc(doc(db, 'users', userId));
+      setUserToDelete(null);
+    } catch (error) {
+      console.error("Error deleting user: ", error);
+    }
   };
 
-  const deleteOrder = (orderId: string) => {
-    const updatedOrders = orders.filter(order => order.id !== orderId);
-    setOrders(updatedOrders);
-    localStorage.setItem('orders', JSON.stringify(updatedOrders));
-    setOrderToDelete(null);
-    if (selectedOrder?.id === orderId) {
-      setIsOrderModalOpen(false);
-      setSelectedOrder(null);
+  const deleteOrder = async (orderId: string) => {
+    try {
+      await deleteDoc(doc(db, 'orders', orderId));
+      setOrderToDelete(null);
+      if (selectedOrder?.id === orderId) {
+        setIsOrderModalOpen(false);
+        setSelectedOrder(null);
+      }
+    } catch (error) {
+      console.error("Error deleting order: ", error);
     }
   };
 

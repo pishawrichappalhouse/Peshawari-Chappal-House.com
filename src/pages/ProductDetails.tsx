@@ -6,6 +6,8 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { Review, Product } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
+import { db } from '../firebase';
+import { collection, query, where, onSnapshot, addDoc } from 'firebase/firestore';
 
 const ProductDetails = () => {
   const { id } = useParams<{ id: string }>();
@@ -27,9 +29,14 @@ const ProductDetails = () => {
       setProduct(foundProduct);
     }
     
-    const savedReviews = JSON.parse(localStorage.getItem('reviews') || '[]');
-    const productReviews = savedReviews.filter((r: Review) => r.productId === id);
-    setReviews(productReviews.sort((a: Review, b: Review) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+    if (id) {
+      const q = query(collection(db, 'reviews'), where('productId', '==', id));
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        const reviewList = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Review));
+        setReviews(reviewList.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+      });
+      return () => unsubscribe();
+    }
   }, [id, products]);
 
   const averageRating = useMemo(() => {
@@ -38,7 +45,7 @@ const ProductDetails = () => {
     return Math.round((sum / reviews.length) * 10) / 10;
   }, [reviews]);
 
-  const handleReviewSubmit = (e: React.FormEvent) => {
+  const handleReviewSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isAuthenticated || !user) {
       navigate('/login');
@@ -49,8 +56,7 @@ const ProductDetails = () => {
 
     setIsSubmitting(true);
 
-    const newReview: Review = {
-      id: Math.random().toString(36).substr(2, 9),
+    const newReview: Omit<Review, 'id'> = {
       productId: id!,
       userEmail: user.email,
       userName: user.username || user.email.split('@')[0],
@@ -59,18 +65,17 @@ const ProductDetails = () => {
       date: new Date().toISOString()
     };
 
-    const savedReviews = JSON.parse(localStorage.getItem('reviews') || '[]');
-    const updatedReviews = [newReview, ...savedReviews];
-    localStorage.setItem('reviews', JSON.stringify(updatedReviews));
-
-    setTimeout(() => {
-      setReviews(prev => [newReview, ...prev]);
+    try {
+      await addDoc(collection(db, 'reviews'), newReview);
       setComment('');
       setRating(5);
       setIsSubmitting(false);
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 3000);
-    }, 800);
+    } catch (error) {
+      console.error("Error submitting review: ", error);
+      setIsSubmitting(false);
+    }
   };
 
   if (!product) {

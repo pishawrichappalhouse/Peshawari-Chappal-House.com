@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { User, ShoppingBag, Package, Calendar, CheckCircle2, XCircle, Clock, ChevronRight, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Order } from '../types';
+import { db } from '../firebase';
+import { collection, query, where, onSnapshot, updateDoc, doc } from 'firebase/firestore';
 
 const Profile = () => {
   const { user } = useAuth();
@@ -10,55 +12,34 @@ const Profile = () => {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 
   useEffect(() => {
-    const fetchOrders = () => {
-      const savedOrders = localStorage.getItem('orders');
-      if (savedOrders && user) {
-        const allOrders: Order[] = JSON.parse(savedOrders);
-        const userOrders = allOrders.filter(order => order.userEmail === user.email);
-        const sortedOrders = userOrders.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-        setOrders(sortedOrders);
-        
-        // Update selected order if it exists to show real-time status in modal
-        if (selectedOrder) {
-          const updatedSelected = sortedOrders.find(o => o.id === selectedOrder.id);
-          if (updatedSelected && updatedSelected.status !== selectedOrder.status) {
-            setSelectedOrder(updatedSelected);
-          }
+    if (!user) return;
+
+    const q = query(collection(db, 'orders'), where('userEmail', '==', user.email));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const orderList = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Order));
+      const sortedOrders = orderList.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      setOrders(sortedOrders);
+      
+      // Update selected order if it exists to show real-time status in modal
+      if (selectedOrder) {
+        const updatedSelected = sortedOrders.find(o => o.id === selectedOrder.id);
+        if (updatedSelected && updatedSelected.status !== selectedOrder.status) {
+          setSelectedOrder(updatedSelected);
         }
       }
-    };
+    });
 
-    fetchOrders();
-
-    // Listen for storage changes (for cross-tab updates)
-    window.addEventListener('storage', fetchOrders);
-    
-    // Periodic polling for real-time updates in the same tab
-    const interval = setInterval(fetchOrders, 3000);
-
-    return () => {
-      window.removeEventListener('storage', fetchOrders);
-      clearInterval(interval);
-    };
+    return () => unsubscribe();
   }, [user, selectedOrder]);
 
   const [orderToCancel, setOrderToCancel] = useState<string | null>(null);
 
-  const handleCancelOrder = (orderId: string) => {
-    const savedOrders = localStorage.getItem('orders');
-    if (savedOrders) {
-      const allOrders: Order[] = JSON.parse(savedOrders);
-      const updatedOrders = allOrders.map(order => 
-        order.id === orderId ? { ...order, status: 'Cancelled' as const } : order
-      );
-      localStorage.setItem('orders', JSON.stringify(updatedOrders));
-      
-      // Update local state
-      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'Cancelled' } : o));
-      if (selectedOrder?.id === orderId) {
-        setSelectedOrder({ ...selectedOrder, status: 'Cancelled' });
-      }
+  const handleCancelOrder = async (orderId: string) => {
+    try {
+      await updateDoc(doc(db, 'orders', orderId), { status: 'Cancelled' });
       setOrderToCancel(null);
+    } catch (error) {
+      console.error("Error cancelling order: ", error);
     }
   };
 

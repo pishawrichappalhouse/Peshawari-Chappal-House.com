@@ -5,6 +5,8 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { Order } from '../types';
+import { db } from '../firebase';
+import { collection, addDoc } from 'firebase/firestore';
 
 const Cart = () => {
   const { cart, removeFromCart, clearCart, total } = useCart();
@@ -49,11 +51,10 @@ const Cart = () => {
     setIsCheckingOut(true);
   };
 
-  const confirmOrder = () => {
+  const confirmOrder = async () => {
     if (!validate()) return;
 
-    const newOrder: Order = {
-      id: Math.random().toString(36).substr(2, 9),
+    const newOrder: Omit<Order, 'id'> = {
       userEmail: user?.email || 'guest',
       customerName: checkoutData.customerName,
       address: checkoutData.address,
@@ -65,13 +66,16 @@ const Cart = () => {
       status: 'Processing'
     };
 
-    const savedOrders = JSON.parse(localStorage.getItem('orders') || '[]');
-    localStorage.setItem('orders', JSON.stringify([...savedOrders, newOrder]));
-    
-    setOrderedItems(cart.map(item => item.name));
-    setIsOrderComplete(true);
-    setIsCheckingOut(false);
-    clearCart();
+    try {
+      await addDoc(collection(db, 'orders'), newOrder);
+      setOrderedItems(cart.map(item => item.name));
+      setIsOrderComplete(true);
+      setIsCheckingOut(false);
+      clearCart();
+    } catch (error) {
+      console.error("Error placing order: ", error);
+      alert("Failed to place order. Please try again.");
+    }
   };
 
   if (cart.length === 0 && !isOrderComplete) {
