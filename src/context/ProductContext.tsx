@@ -12,59 +12,38 @@ interface ProductContextType {
 
 const ProductContext = createContext<ProductContextType | undefined>(undefined);
 
-const INITIAL_PRODUCTS: Product[] = [
-  {
-    id: '1',
-    name: 'Classic Black Peshawari',
-    price: 4500,
-    image: '/api/attachments/1742381294827_chappal.jpg',
-    description: 'Authentic handmade black leather chappal with traditional stitching and durable sole.',
-    category: 'Classic'
-  },
-  {
-    id: '2',
-    name: 'Premium Midnight Edition',
-    price: 5500,
-    image: '/api/attachments/1742381294827_chappal.jpg',
-    description: 'Premium black leather with double sole for extra comfort and royal look.',
-    category: 'Premium'
-  },
-  {
-    id: '3',
-    name: 'Modern Black Chappal',
-    price: 6000,
-    image: '/api/attachments/1742381294827_chappal.jpg',
-    description: 'Sleek black leather with modern finish and rugged sole.',
-    category: 'Modern'
-  },
-  {
-    id: '4',
-    name: 'Traditional Peshawari Special',
-    price: 1800,
-    image: '/api/attachments/1742381294827_chappal.jpg',
-    description: 'Special edition traditional Peshawari chappal with durable sole.',
-    category: 'Classic'
-  }
-];
-
 export const ProductProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const loadProducts = () => {
     const savedProducts = localStorage.getItem('products');
     if (savedProducts) {
       setProducts(JSON.parse(savedProducts));
     } else {
-      setProducts(INITIAL_PRODUCTS);
-      localStorage.setItem('products', JSON.stringify(INITIAL_PRODUCTS));
+      setProducts([]);
+      localStorage.setItem('products', JSON.stringify([]));
     }
+  };
+
+  useEffect(() => {
+    loadProducts();
     setLoading(false);
+
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'products') {
+        loadProducts();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
   const addProduct = async (product: Omit<Product, 'id'>) => {
     const newProduct = { ...product, id: Date.now().toString() };
-    const updatedProducts = [...products, newProduct];
+    const savedProducts = JSON.parse(localStorage.getItem('products') || '[]');
+    const updatedProducts = [...savedProducts, newProduct];
     setProducts(updatedProducts);
     localStorage.setItem('products', JSON.stringify(updatedProducts));
   };

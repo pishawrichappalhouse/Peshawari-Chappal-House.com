@@ -15,17 +15,33 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const loadOrders = () => {
     const savedOrders = localStorage.getItem('orders');
     if (savedOrders) {
       setOrders(JSON.parse(savedOrders));
+    } else {
+      setOrders([]);
     }
+  };
+
+  useEffect(() => {
+    loadOrders();
     setLoading(false);
+
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'orders') {
+        loadOrders();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
   const addOrder = async (order: Omit<Order, 'id'>) => {
     const newOrder = { ...order, id: 'ORD-' + Date.now().toString().slice(-6) };
-    const updatedOrders = [newOrder, ...orders];
+    const savedOrders = JSON.parse(localStorage.getItem('orders') || '[]');
+    const updatedOrders = [newOrder, ...savedOrders];
     setOrders(updatedOrders);
     localStorage.setItem('orders', JSON.stringify(updatedOrders));
   };

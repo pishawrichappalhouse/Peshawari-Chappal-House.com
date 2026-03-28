@@ -141,9 +141,15 @@ const Home = () => {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-          {featuredProducts.map((product) => (
-            <ProductCard key={product.id} product={product} />
-          ))}
+          {featuredProducts.length > 0 ? (
+            featuredProducts.map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))
+          ) : (
+            <div className="col-span-full py-20 text-center bg-stone-50 rounded-[3rem] border border-dashed border-stone-200">
+              <p className="text-stone-500 font-medium italic">No products available at the moment. Please check back later!</p>
+            </div>
+          )}
         </div>
       </section>
 

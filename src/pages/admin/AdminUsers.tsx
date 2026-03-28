@@ -6,26 +6,13 @@ import { useAuth } from '../../context/AuthContext';
 import { motion, AnimatePresence } from 'motion/react';
 
 const AdminUsers = () => {
-  const { user: currentUser } = useAuth();
-  const [users, setUsers] = useState<any[]>([]);
+  const { user: currentUser, users, deleteUser } = useAuth();
   const [userSearchQuery, setUserSearchQuery] = useState('');
   const [userToDelete, setUserToDelete] = useState<string | null>(null);
 
-  useEffect(() => {
-    const mockUsers = JSON.parse(localStorage.getItem('mock_users') || '[]');
-    // Add current user if not in mock users
-    if (currentUser && !mockUsers.find((u: any) => u.email === currentUser.email)) {
-      mockUsers.push(currentUser);
-    }
-    setUsers(mockUsers);
-  }, [currentUser]);
-
-  const deleteUser = async (userEmail: string) => {
+  const handleDeleteUser = async (userEmail: string) => {
     try {
-      const mockUsers = JSON.parse(localStorage.getItem('mock_users') || '[]');
-      const updatedUsers = mockUsers.filter((u: any) => u.email !== userEmail);
-      localStorage.setItem('mock_users', JSON.stringify(updatedUsers));
-      setUsers(updatedUsers);
+      await deleteUser(userEmail);
       setUserToDelete(null);
     } catch (error) {
       console.error("Error deleting user: ", error);
@@ -135,7 +122,7 @@ const AdminUsers = () => {
                     CANCEL
                   </button>
                   <button 
-                    onClick={() => deleteUser(userToDelete)}
+                    onClick={() => handleDeleteUser(userToDelete)}
                     className="flex-grow py-3 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition-all shadow-lg shadow-red-600/20"
                   >
                     DELETE

@@ -3,9 +3,11 @@ import { User } from '../types';
 
 interface AuthContextType {
   user: User | null;
+  users: User[];
   login: (email?: string, password?: string) => Promise<void>;
   signup: (email: string, password: string, username: string, phone: string) => Promise<void>;
   logout: () => Promise<void>;
+  deleteUser: (email: string) => Promise<void>;
   isAuthenticated: boolean;
   isAdmin: boolean;
   loading: boolean;
@@ -17,14 +19,34 @@ const ADMIN_EMAIL = 'aiwithqammar@gmail.com';
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const loadUsers = () => {
+    const mockUsers = JSON.parse(localStorage.getItem('mock_users') || '[]');
+    setUsers(mockUsers);
+  };
 
   useEffect(() => {
     const savedUser = localStorage.getItem('user');
     if (savedUser) {
       setUser(JSON.parse(savedUser));
     }
+    loadUsers();
     setLoading(false);
+
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'mock_users') {
+        loadUsers();
+      }
+      if (e.key === 'user') {
+        const newUser = e.newValue ? JSON.parse(e.newValue) : null;
+        setUser(newUser);
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
   const login = async (email?: string, password?: string) => {
@@ -32,8 +54,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       // Mock login logic
       if (email && password) {
-        const users = JSON.parse(localStorage.getItem('mock_users') || '[]');
-        const foundUser = users.find((u: any) => u.email === email && u.password === password);
+        const mockUsers = JSON.parse(localStorage.getItem('mock_users') || '[]');
+        const foundUser = mockUsers.find((u: any) => u.email === email && u.password === password);
         
         if (foundUser) {
           const { password: _, ...userData } = foundUser;
@@ -70,8 +92,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signup = async (email: string, password: string, username: string, phone: string) => {
     setLoading(true);
     try {
-      const users = JSON.parse(localStorage.getItem('mock_users') || '[]');
-      if (users.find((u: any) => u.email === email)) {
+      const mockUsers = JSON.parse(localStorage.getItem('mock_users') || '[]');
+      if (mockUsers.find((u: any) => u.email === email)) {
         throw new Error('User already exists');
       }
 
@@ -82,8 +104,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         role: email === ADMIN_EMAIL ? 'admin' : 'user'
       };
 
-      users.push({ ...newUser, password });
-      localStorage.setItem('mock_users', JSON.stringify(users));
+      mockUsers.push({ ...newUser, password });
+      localStorage.setItem('mock_users', JSON.stringify(mockUsers));
+      loadUsers();
       
       setUser(newUser);
       localStorage.setItem('user', JSON.stringify(newUser));
@@ -97,12 +120,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem('user');
   };
 
+  const deleteUser = async (email: string) => {
+    const mockUsers = JSON.parse(localStorage.getItem('mock_users') || '[]');
+    const updatedUsers = mockUsers.filter((u: any) => u.email !== email);
+    localStorage.setItem('mock_users', JSON.stringify(updatedUsers));
+    loadUsers();
+  };
+
   return (
     <AuthContext.Provider value={{ 
       user, 
+      users,
       login, 
       signup,
       logout, 
+      deleteUser,
       isAuthenticated: !!user,
       isAdmin: user?.role === 'admin',
       loading

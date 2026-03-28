@@ -101,24 +101,36 @@ const Shop = () => {
       </div>
 
       {/* Product Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-        <AnimatePresence mode="popLayout">
-          {filteredProducts.map((product) => (
-            <motion.div
-              key={product.id}
-              layout
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              transition={{ duration: 0.3 }}
-            >
-              <ProductCard product={product} />
-            </motion.div>
-          ))}
-        </AnimatePresence>
-      </div>
+      {products.length > 0 ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+          <AnimatePresence mode="popLayout">
+            {filteredProducts.map((product) => (
+              <motion.div
+                key={product.id}
+                layout
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                transition={{ duration: 0.3 }}
+              >
+                <ProductCard product={product} />
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </div>
+      ) : (
+        <div className="text-center py-32 space-y-6 bg-stone-50 rounded-[3rem] border border-dashed border-stone-200">
+          <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto text-stone-200 shadow-sm">
+            <Filter size={32} />
+          </div>
+          <div className="space-y-2">
+            <h3 className="text-2xl font-serif font-bold text-stone-900">No products available</h3>
+            <p className="text-stone-700 max-w-md mx-auto">We are currently updating our collection. Please check back soon for our latest handcrafted designs!</p>
+          </div>
+        </div>
+      )}
 
-      {filteredProducts.length === 0 && (
+      {products.length > 0 && filteredProducts.length === 0 && (
         <div className="text-center py-24 space-y-6">
           <div className="w-20 h-20 bg-stone-100 rounded-full flex items-center justify-center mx-auto text-stone-400">
             <Search size={32} />
