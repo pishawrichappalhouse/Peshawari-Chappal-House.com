@@ -4,34 +4,21 @@ import {
 } from 'lucide-react';
 import { useProducts } from '../../context/ProductContext';
 import { useAuth } from '../../context/AuthContext';
+import { useOrders } from '../../context/OrderContext';
 import { Order } from '../../types';
 import { motion } from 'motion/react';
-import { db } from '../../firebase';
-import { collection, onSnapshot } from 'firebase/firestore';
 
 const AdminDashboard = () => {
   const { products } = useProducts();
   const { user: currentUser } = useAuth();
-  const [orders, setOrders] = useState<Order[]>([]);
+  const { orders } = useOrders();
   const [users, setUsers] = useState<any[]>([]);
 
   useEffect(() => {
     if (!currentUser || currentUser.role !== 'admin') return;
 
-    const unsubscribeOrders = onSnapshot(collection(db, 'orders'), (snapshot) => {
-      const orderList = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Order));
-      setOrders(orderList.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
-    });
-
-    const unsubscribeUsers = onSnapshot(collection(db, 'users'), (snapshot) => {
-      const userList = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-      setUsers(userList);
-    });
-
-    return () => {
-      unsubscribeOrders();
-      unsubscribeUsers();
-    };
+    const storedUsers = JSON.parse(localStorage.getItem('mock_users') || '[]');
+    setUsers(storedUsers);
   }, [currentUser]);
 
   const totalRevenue = orders.reduce((sum, order) => sum + order.total, 0);

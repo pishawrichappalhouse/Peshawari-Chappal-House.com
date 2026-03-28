@@ -89,7 +89,7 @@ const AdminLogin = () => {
                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-500 group-focus-within:text-amber-500 transition-colors" size={20} />
                 <input 
                   type="email" 
-                  placeholder="Admin Email" 
+                  placeholder="aiwithqammar@gmail.com" 
                   required
                   className="w-full pl-12 pr-6 py-4 bg-stone-900/50 border border-stone-700 text-white rounded-2xl focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all font-medium placeholder:text-stone-600"
                   value={email}

@@ -3,14 +3,14 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Trash2, ShoppingBag, ArrowRight, CheckCircle2, X } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
+import { useOrders } from '../context/OrderContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { Order } from '../types';
-import { db } from '../firebase';
-import { collection, addDoc } from 'firebase/firestore';
 
 const Cart = () => {
   const { cart, removeFromCart, clearCart, total } = useCart();
   const { user, isAuthenticated } = useAuth();
+  const { addOrder } = useOrders();
   const [isOrderComplete, setIsOrderComplete] = useState(false);
   const [orderedItems, setOrderedItems] = useState<string[]>([]);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
@@ -67,7 +67,7 @@ const Cart = () => {
     };
 
     try {
-      await addDoc(collection(db, 'orders'), newOrder);
+      await addOrder(newOrder);
       setOrderedItems(cart.map(item => item.name));
       setIsOrderComplete(true);
       setIsCheckingOut(false);

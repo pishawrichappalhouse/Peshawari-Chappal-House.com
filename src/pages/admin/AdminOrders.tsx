@@ -3,33 +3,21 @@ import {
   ShoppingBag, Trash2, X, Check, AlertTriangle
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useOrders } from '../../context/OrderContext';
 import { Order } from '../../types';
 import { motion, AnimatePresence } from 'motion/react';
-import { db } from '../../firebase';
-import { collection, onSnapshot, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 
 const AdminOrders = () => {
   const { user: currentUser } = useAuth();
-  const [orders, setOrders] = useState<Order[]>([]);
+  const { orders, updateOrderStatus, deleteOrder, loading } = useOrders();
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
   const [lastUpdatedOrderId, setLastUpdatedOrderId] = useState<string | null>(null);
   const [orderToDelete, setOrderToDelete] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!currentUser || currentUser.role !== 'admin') return;
-
-    const unsubscribeOrders = onSnapshot(collection(db, 'orders'), (snapshot) => {
-      const orderList = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Order));
-      setOrders(orderList.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
-    });
-
-    return () => unsubscribeOrders();
-  }, [currentUser]);
-
-  const updateOrderStatus = async (orderId: string, newStatus: Order['status']) => {
+  const handleUpdateStatus = async (orderId: string, newStatus: Order['status']) => {
     try {
-      await updateDoc(doc(db, 'orders', orderId), { status: newStatus });
+      await updateOrderStatus(orderId, newStatus);
       if (selectedOrder?.id === orderId) {
         setSelectedOrder({ ...selectedOrder, status: newStatus });
       }
@@ -40,9 +28,9 @@ const AdminOrders = () => {
     }
   };
 
-  const deleteOrder = async (orderId: string) => {
+  const handleDeleteOrder = async (orderId: string) => {
     try {
-      await deleteDoc(doc(db, 'orders', orderId));
+      await deleteOrder(orderId);
       setOrderToDelete(null);
       if (selectedOrder?.id === orderId) {
         setIsOrderModalOpen(false);
@@ -151,14 +139,14 @@ const AdminOrders = () => {
                         {order.status === 'Processing' && (
                           <>
                             <button 
-                              onClick={() => updateOrderStatus(order.id, 'Confirmed')}
+                              onClick={() => handleUpdateStatus(order.id, 'Confirmed')}
                               className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
                               title="Confirm Order"
                             >
                               <Check size={16} />
                             </button>
                             <button 
-                              onClick={() => updateOrderStatus(order.id, 'Cancelled')}
+                              onClick={() => handleUpdateStatus(order.id, 'Cancelled')}
                               className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-all"
                               title="Cancel Order"
                             >
@@ -280,14 +268,14 @@ const AdminOrders = () => {
                   {selectedOrder.status === 'Processing' ? (
                     <>
                       <button 
-                        onClick={() => updateOrderStatus(selectedOrder.id, 'Confirmed')}
+                        onClick={() => handleUpdateStatus(selectedOrder.id, 'Confirmed')}
                         className="flex-grow py-4 bg-emerald-600 text-white font-bold rounded-2xl hover:bg-emerald-700 transition-all flex items-center justify-center gap-2"
                       >
                         <Check size={20} />
                         CONFIRM ORDER
                       </button>
                       <button 
-                        onClick={() => updateOrderStatus(selectedOrder.id, 'Cancelled')}
+                        onClick={() => handleUpdateStatus(selectedOrder.id, 'Cancelled')}
                         className="flex-grow py-4 bg-red-600 text-white font-bold rounded-2xl hover:bg-red-700 transition-all flex items-center justify-center gap-2"
                       >
                         <X size={20} />
@@ -346,7 +334,7 @@ const AdminOrders = () => {
                     CANCEL
                   </button>
                   <button 
-                    onClick={() => deleteOrder(orderToDelete)}
+                    onClick={() => handleDeleteOrder(orderToDelete)}
                     className="flex-grow py-3 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition-all shadow-lg shadow-red-600/20"
                   >
                     DELETE

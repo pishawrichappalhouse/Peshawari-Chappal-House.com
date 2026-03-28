@@ -1,21 +1,10 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from '../types';
-import { auth, db } from '../firebase';
-import { 
-  onAuthStateChanged, 
-  signOut, 
-  GoogleAuthProvider, 
-  signInWithPopup,
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  updateProfile
-} from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 interface AuthContextType {
   user: User | null;
   login: (email?: string, password?: string) => Promise<void>;
-  signup: (email: string, password: string, username: string) => Promise<void>;
+  signup: (email: string, password: string, username: string, phone: string) => Promise<void>;
   logout: () => Promise<void>;
   isAuthenticated: boolean;
   isAdmin: boolean;
@@ -24,72 +13,88 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const ADMIN_EMAIL = 'admin@gmail.com';
+const ADMIN_EMAIL = 'aiwithqammar@gmail.com';
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        // Check if user exists in Firestore
-        const userDocRef = doc(db, 'users', firebaseUser.uid);
-        const userDoc = await getDoc(userDocRef);
-        
-        if (userDoc.exists()) {
-          const userData = userDoc.data() as User;
-          // Force admin role if email matches ADMIN_EMAIL but role is not admin
-          if (firebaseUser.email === ADMIN_EMAIL && userData.role !== 'admin') {
-            const updatedUser = { ...userData, role: 'admin' as const };
-            await setDoc(userDocRef, updatedUser, { merge: true });
-            setUser(updatedUser);
-          } else {
-            setUser(userData);
-          }
-        } else {
-          // Create new user profile
-          const newUser: User = {
-            email: firebaseUser.email!,
-            username: firebaseUser.displayName || firebaseUser.email!.split('@')[0],
-            role: firebaseUser.email === ADMIN_EMAIL ? 'admin' : 'user'
-          };
-          await setDoc(userDocRef, newUser);
-          setUser(newUser);
-        }
-      } else {
-        setUser(null);
-      }
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
+    const savedUser = localStorage.getItem('user');
+    if (savedUser) {
+      setUser(JSON.parse(savedUser));
+    }
+    setLoading(false);
   }, []);
 
   const login = async (email?: string, password?: string) => {
-    if (email && password) {
-      await signInWithEmailAndPassword(auth, email, password);
-    } else {
-      const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
+    setLoading(true);
+    try {
+      // Mock login logic
+      if (email && password) {
+        const users = JSON.parse(localStorage.getItem('mock_users') || '[]');
+        const foundUser = users.find((u: any) => u.email === email && u.password === password);
+        
+        if (foundUser) {
+          const { password: _, ...userData } = foundUser;
+          setUser(userData);
+          localStorage.setItem('user', JSON.stringify(userData));
+        } else if (email === ADMIN_EMAIL && password === 'admin123') {
+          // Default admin login
+          const adminUser: User = {
+            email: ADMIN_EMAIL,
+            username: 'Admin',
+            role: 'admin',
+            phone: '0000000000'
+          };
+          setUser(adminUser);
+          localStorage.setItem('user', JSON.stringify(adminUser));
+        } else {
+          throw new Error('Invalid email or password');
+        }
+      } else {
+        // Mock Google Login
+        const googleUser: User = {
+          email: 'google-user@example.com',
+          username: 'Google User',
+          role: 'user'
+        };
+        setUser(googleUser);
+        localStorage.setItem('user', JSON.stringify(googleUser));
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
-  const signup = async (email: string, password: string, username: string) => {
-    const { user: firebaseUser } = await createUserWithEmailAndPassword(auth, email, password);
-    await updateProfile(firebaseUser, { displayName: username });
-    
-    const newUser: User = {
-      email,
-      username,
-      role: email === ADMIN_EMAIL ? 'admin' : 'user'
-    };
-    await setDoc(doc(db, 'users', firebaseUser.uid), newUser);
-    setUser(newUser);
+  const signup = async (email: string, password: string, username: string, phone: string) => {
+    setLoading(true);
+    try {
+      const users = JSON.parse(localStorage.getItem('mock_users') || '[]');
+      if (users.find((u: any) => u.email === email)) {
+        throw new Error('User already exists');
+      }
+
+      const newUser: User = {
+        email,
+        username,
+        phone,
+        role: email === ADMIN_EMAIL ? 'admin' : 'user'
+      };
+
+      users.push({ ...newUser, password });
+      localStorage.setItem('mock_users', JSON.stringify(users));
+      
+      setUser(newUser);
+      localStorage.setItem('user', JSON.stringify(newUser));
+    } finally {
+      setLoading(false);
+    }
   };
 
   const logout = async () => {
-    await signOut(auth);
+    setUser(null);
+    localStorage.removeItem('user');
   };
 
   return (

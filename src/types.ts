@@ -27,6 +27,7 @@ export interface CartItem extends Product {
 export interface User {
   email: string;
   username?: string;
+  phone?: string;
   password?: string;
   role: 'user' | 'admin';
 }

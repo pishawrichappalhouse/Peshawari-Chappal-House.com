@@ -2,41 +2,31 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { User, ShoppingBag, Package, Calendar, CheckCircle2, XCircle, Clock, ChevronRight, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useOrders } from '../context/OrderContext';
 import { Order } from '../types';
-import { db } from '../firebase';
-import { collection, query, where, onSnapshot, updateDoc, doc } from 'firebase/firestore';
 
 const Profile = () => {
   const { user } = useAuth();
-  const [orders, setOrders] = useState<Order[]>([]);
+  const { orders: allOrders, updateOrderStatus } = useOrders();
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 
+  const orders = allOrders.filter(o => o.userEmail === user?.email)
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
   useEffect(() => {
-    if (!user) return;
-
-    const q = query(collection(db, 'orders'), where('userEmail', '==', user.email));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const orderList = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Order));
-      const sortedOrders = orderList.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-      setOrders(sortedOrders);
-      
-      // Update selected order if it exists to show real-time status in modal
-      if (selectedOrder) {
-        const updatedSelected = sortedOrders.find(o => o.id === selectedOrder.id);
-        if (updatedSelected && updatedSelected.status !== selectedOrder.status) {
-          setSelectedOrder(updatedSelected);
-        }
+    if (selectedOrder) {
+      const updatedSelected = orders.find(o => o.id === selectedOrder.id);
+      if (updatedSelected && updatedSelected.status !== selectedOrder.status) {
+        setSelectedOrder(updatedSelected);
       }
-    });
-
-    return () => unsubscribe();
-  }, [user, selectedOrder]);
+    }
+  }, [orders, selectedOrder]);
 
   const [orderToCancel, setOrderToCancel] = useState<string | null>(null);
 
   const handleCancelOrder = async (orderId: string) => {
     try {
-      await updateDoc(doc(db, 'orders', orderId), { status: 'Cancelled' });
+      await updateOrderStatus(orderId, 'Cancelled');
       setOrderToCancel(null);
     } catch (error) {
       console.error("Error cancelling order: ", error);
@@ -64,6 +54,12 @@ const Profile = () => {
               <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">Role</p>
               <p className="text-sm font-bold text-stone-900 uppercase">{user.role || 'User'}</p>
             </div>
+            {user.phone && (
+              <div className="px-4 py-2 bg-stone-50 rounded-xl border border-stone-100">
+                <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">Phone</p>
+                <p className="text-sm font-bold text-stone-900">{user.phone}</p>
+              </div>
+            )}
             <div className="px-4 py-2 bg-stone-50 rounded-xl border border-stone-100">
               <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">Total Orders</p>
               <p className="text-sm font-bold text-stone-900">{orders.length}</p>

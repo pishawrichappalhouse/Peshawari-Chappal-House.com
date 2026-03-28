@@ -4,8 +4,6 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { motion, AnimatePresence } from 'motion/react';
-import { db } from '../../firebase';
-import { collection, onSnapshot, deleteDoc, doc } from 'firebase/firestore';
 
 const AdminUsers = () => {
   const { user: currentUser } = useAuth();
@@ -14,19 +12,20 @@ const AdminUsers = () => {
   const [userToDelete, setUserToDelete] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!currentUser || currentUser.role !== 'admin') return;
-
-    const unsubscribeUsers = onSnapshot(collection(db, 'users'), (snapshot) => {
-      const userList = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-      setUsers(userList);
-    });
-
-    return () => unsubscribeUsers();
+    const mockUsers = JSON.parse(localStorage.getItem('mock_users') || '[]');
+    // Add current user if not in mock users
+    if (currentUser && !mockUsers.find((u: any) => u.email === currentUser.email)) {
+      mockUsers.push(currentUser);
+    }
+    setUsers(mockUsers);
   }, [currentUser]);
 
-  const deleteUser = async (userId: string) => {
+  const deleteUser = async (userEmail: string) => {
     try {
-      await deleteDoc(doc(db, 'users', userId));
+      const mockUsers = JSON.parse(localStorage.getItem('mock_users') || '[]');
+      const updatedUsers = mockUsers.filter((u: any) => u.email !== userEmail);
+      localStorage.setItem('mock_users', JSON.stringify(updatedUsers));
+      setUsers(updatedUsers);
       setUserToDelete(null);
     } catch (error) {
       console.error("Error deleting user: ", error);
@@ -59,6 +58,7 @@ const AdminUsers = () => {
               <tr className="bg-stone-50/50 border-b border-stone-100">
                 <th className="px-8 py-6 font-bold text-stone-400 text-xs uppercase tracking-widest">Username</th>
                 <th className="px-8 py-6 font-bold text-stone-400 text-xs uppercase tracking-widest">Email</th>
+                <th className="px-8 py-6 font-bold text-stone-400 text-xs uppercase tracking-widest">Phone</th>
                 <th className="px-8 py-6 font-bold text-stone-400 text-xs uppercase tracking-widest">Role</th>
                 <th className="px-8 py-6 font-bold text-stone-400 text-xs uppercase tracking-widest text-right">Actions</th>
               </tr>
@@ -70,9 +70,10 @@ const AdminUsers = () => {
                   (u.username && u.username.toLowerCase().includes(userSearchQuery.toLowerCase()))
                 )
                 .map((user) => (
-                <tr key={user.id} className="hover:bg-stone-50/50 transition-colors">
+                <tr key={user.email} className="hover:bg-stone-50/50 transition-colors">
                   <td className="px-8 py-6 font-bold text-stone-900">{user.username || 'N/A'}</td>
                   <td className="px-8 py-6 font-medium text-stone-600">{user.email}</td>
+                  <td className="px-8 py-6 font-medium text-stone-600">{user.phone || 'N/A'}</td>
                   <td className="px-8 py-6">
                     <span className={`px-3 py-1 text-[10px] font-bold uppercase rounded-full ${
                       user.role === 'admin' ? 'bg-purple-50 text-purple-700' : 'bg-blue-50 text-blue-700'
@@ -83,7 +84,7 @@ const AdminUsers = () => {
                   <td className="px-8 py-6 text-right">
                     {user.email !== currentUser?.email && (
                       <button 
-                        onClick={() => setUserToDelete(user.id)}
+                        onClick={() => setUserToDelete(user.email)}
                         className="p-2 text-stone-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
                       >
                         <Trash2 size={18} />

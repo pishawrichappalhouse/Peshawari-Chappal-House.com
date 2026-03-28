@@ -1,7 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Product } from '../types';
-import { db } from '../firebase';
-import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, setDoc } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
 
 interface ProductContextType {
@@ -52,50 +50,35 @@ const INITIAL_PRODUCTS: Product[] = [
 export const ProductProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const { isAdmin } = useAuth();
 
   useEffect(() => {
-    const unsubscribe = onSnapshot(collection(db, 'products'), (snapshot) => {
-      const productList = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Product));
-      setProducts(productList);
-      setLoading(false);
-    }, (error) => {
-      console.error("Firestore Error: ", error);
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
+    const savedProducts = localStorage.getItem('products');
+    if (savedProducts) {
+      setProducts(JSON.parse(savedProducts));
+    } else {
+      setProducts(INITIAL_PRODUCTS);
+      localStorage.setItem('products', JSON.stringify(INITIAL_PRODUCTS));
+    }
+    setLoading(false);
   }, []);
 
-  // Separate effect for seeding products (Admin only)
-  useEffect(() => {
-    const seedProducts = async () => {
-      if (products.length === 0 && !loading && isAdmin) {
-        // Seed initial products if collection is empty and user is admin
-        for (const p of INITIAL_PRODUCTS) {
-          const { id, ...data } = p;
-          try {
-            await setDoc(doc(db, 'products', id), data);
-          } catch (error) {
-            console.error("Error seeding product: ", error);
-          }
-        }
-      }
-    };
-    seedProducts();
-  }, [products.length, loading, isAdmin]);
-
   const addProduct = async (product: Omit<Product, 'id'>) => {
-    await addDoc(collection(db, 'products'), product);
+    const newProduct = { ...product, id: Date.now().toString() };
+    const updatedProducts = [...products, newProduct];
+    setProducts(updatedProducts);
+    localStorage.setItem('products', JSON.stringify(updatedProducts));
   };
 
   const updateProduct = async (product: Product) => {
-    const { id, ...data } = product;
-    await updateDoc(doc(db, 'products', id), data);
+    const updatedProducts = products.map(p => p.id === product.id ? product : p);
+    setProducts(updatedProducts);
+    localStorage.setItem('products', JSON.stringify(updatedProducts));
   };
 
   const deleteProduct = async (id: string) => {
-    await deleteDoc(doc(db, 'products', id));
+    const updatedProducts = products.filter(p => p.id !== id);
+    setProducts(updatedProducts);
+    localStorage.setItem('products', JSON.stringify(updatedProducts));
   };
 
   return (

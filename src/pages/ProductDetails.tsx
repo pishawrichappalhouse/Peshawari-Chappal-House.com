@@ -6,8 +6,6 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { Review, Product } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
-import { db } from '../firebase';
-import { collection, query, where, onSnapshot, addDoc } from 'firebase/firestore';
 
 const ProductDetails = () => {
   const { id } = useParams<{ id: string }>();
@@ -30,12 +28,9 @@ const ProductDetails = () => {
     }
     
     if (id) {
-      const q = query(collection(db, 'reviews'), where('productId', '==', id));
-      const unsubscribe = onSnapshot(q, (snapshot) => {
-        const reviewList = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Review));
-        setReviews(reviewList.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
-      });
-      return () => unsubscribe();
+      const storedReviews = JSON.parse(localStorage.getItem('mock_reviews') || '[]');
+      const productReviews = storedReviews.filter((r: Review) => r.productId === id);
+      setReviews(productReviews.sort((a: Review, b: Review) => new Date(b.date).getTime() - new Date(a.date).getTime()));
     }
   }, [id, products]);
 
@@ -56,7 +51,8 @@ const ProductDetails = () => {
 
     setIsSubmitting(true);
 
-    const newReview: Omit<Review, 'id'> = {
+    const newReview: Review = {
+      id: Date.now().toString(),
       productId: id!,
       userEmail: user.email,
       userName: user.username || user.email.split('@')[0],
@@ -66,7 +62,11 @@ const ProductDetails = () => {
     };
 
     try {
-      await addDoc(collection(db, 'reviews'), newReview);
+      const storedReviews = JSON.parse(localStorage.getItem('mock_reviews') || '[]');
+      const updatedReviews = [newReview, ...storedReviews];
+      localStorage.setItem('mock_reviews', JSON.stringify(updatedReviews));
+      
+      setReviews(updatedReviews.filter(r => r.productId === id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
       setComment('');
       setRating(5);
       setIsSubmitting(false);

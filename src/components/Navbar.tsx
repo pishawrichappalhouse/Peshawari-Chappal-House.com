@@ -3,14 +3,14 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ShoppingCart, User, LogOut, Menu, X, ShieldCheck, Package } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
+import { useOrders } from '../context/OrderContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { Order } from '../types';
-import { db } from '../firebase';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
 
 const Navbar = () => {
   const { user, logout, isAdmin } = useAuth();
   const { cart } = useCart();
+  const { orders } = useOrders();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [latestOrder, setLatestOrder] = useState<Order | null>(null);
   const [showConfirmPopup, setShowConfirmPopup] = useState(false);
@@ -24,27 +24,22 @@ const Navbar = () => {
       return;
     }
 
-    const q = query(collection(db, 'orders'), where('userEmail', '==', user.email));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const orderList = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Order));
-      if (orderList.length > 0) {
-        const sorted = orderList.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-        const currentLatest = sorted[0];
-        setLatestOrder(currentLatest);
+    const userOrders = orders.filter(o => o.userEmail === user.email);
+    if (userOrders.length > 0) {
+      const sorted = userOrders.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      const currentLatest = sorted[0];
+      setLatestOrder(currentLatest);
 
-        // Check for status changes to show notification
-        const notifiedOrders = JSON.parse(localStorage.getItem(`notified_orders_${user.email}`) || '[]');
-        if (currentLatest.status === 'Confirmed' && !notifiedOrders.includes(currentLatest.id)) {
-          setShowConfirmPopup(true);
-          localStorage.setItem(`notified_orders_${user.email}`, JSON.stringify([...notifiedOrders, currentLatest.id]));
-        }
-      } else {
-        setLatestOrder(null);
+      // Check for status changes to show notification
+      const notifiedOrders = JSON.parse(localStorage.getItem(`notified_orders_${user.email}`) || '[]');
+      if (currentLatest.status === 'Confirmed' && !notifiedOrders.includes(currentLatest.id)) {
+        setShowConfirmPopup(true);
+        localStorage.setItem(`notified_orders_${user.email}`, JSON.stringify([...notifiedOrders, currentLatest.id]));
       }
-    });
-
-    return () => unsubscribe();
-  }, [user]);
+    } else {
+      setLatestOrder(null);
+    }
+  }, [user, orders]);
 
   return (
     <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-stone-200">

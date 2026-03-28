@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, Lock, ArrowRight, LogIn, User } from 'lucide-react';
+import { Mail, Lock, ArrowRight, LogIn, User, Phone } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { motion } from 'motion/react';
 
 const Signup = () => {
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
@@ -23,7 +24,7 @@ const Signup = () => {
     }
 
     try {
-      await signup(email, password, username);
+      await signup(email, password, username, phone);
       navigate('/');
     } catch (err: any) {
       console.error(err);
@@ -73,6 +74,18 @@ const Signup = () => {
                   className="w-full pl-12 pr-6 py-4 bg-stone-50 border border-stone-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-amber-700/20 focus:border-amber-700 transition-all font-medium"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                />
+              </div>
+
+              <div className="relative group">
+                <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400 group-focus-within:text-amber-700 transition-colors" size={20} />
+                <input 
+                  type="tel" 
+                  placeholder="Phone Number" 
+                  required
+                  className="w-full pl-12 pr-6 py-4 bg-stone-50 border border-stone-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-amber-700/20 focus:border-amber-700 transition-all font-medium"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
                 />
               </div>
 

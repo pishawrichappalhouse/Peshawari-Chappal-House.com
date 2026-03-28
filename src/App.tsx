@@ -10,6 +10,7 @@ import { Loader2 } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import { ProductProvider } from './context/ProductContext';
+import { OrderProvider } from './context/OrderContext';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import Home from './pages/Home';
@@ -127,9 +128,11 @@ export default function App() {
     <AuthProvider>
       <ProductProvider>
         <CartProvider>
-          <Router>
-            <AppContent />
-          </Router>
+          <OrderProvider>
+            <Router>
+              <AppContent />
+            </Router>
+          </OrderProvider>
         </CartProvider>
       </ProductProvider>
     </AuthProvider>
